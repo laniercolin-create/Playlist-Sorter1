@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Playlist Sorter</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
+
+  :root {
+    --green: #1DB954;
+    --black: #0a0a0a;
+    --dark: #111111;
+    --card: #1a1a1a;
+    --border: #2a2a2a;
+    --text: #ffffff;
+    --muted: #888888;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--black);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: linear-gradient(var(--border) 1px, transparent 1px),
+                      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 40px 40px;
+    opacity: 0.3;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 20px;
+    position: relative;
+    z-index: 1;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 50px;
+  }
+
+  .logo {
+    width: 44px;
+    height: 44px;
+    background: var(--green);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+  }
+
+  h1 {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+
+  h1 span { color: var(--green); }
+
+  /* Screens */
+  .screen { display: none; animation: fadeIn 0.4s ease; }
+  .screen.active { display: block; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Login screen */
+  .login-box {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 48px;
+    text-align: center;
+    max-width: 480px;
+    margin: 60px auto 0;
+  }
+
+  .login-box h2 {
+    font-size: 26px;
+    font-weight: 800;
+    margin-bottom: 12px;
+  }
+
+  .login-box p {
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.6;
+    margin-bottom: 32px;
+    font-family: 'Space Mono', monospace;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--green);
+    color: #000;
+    border: none;
+    border-radius: 100px;
+    padding: 14px 32px;
+    font-size: 15px;
+    font-weight: 700;
+    font-family: 'Syne', sans-serif;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+    text-decoration: none;
+  }
+
+  .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(29,185,84,0.35);
+  }
+
+  .btn:active { transform: translateY(0); }
+
+  .btn-outline {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  .btn-outline:hover {
+    border-color: var(--green);
+    color: var(--green);
+    box-shadow: 0 4px 16px rgba(29,185,84,0.15);
+  }
+
+  /* Loading */
+  .loading-box {
+    text-align: center;
+    padding: 80px 20px;
+  }
+
+  .spinner {
+    width: 48px;
+    height: 48px;
+    border: 3px solid var(--border);
+    border-top-color: var(--green);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 24px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-box p {
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+  }
+
+  /* Stats bar */
+  .stats-bar {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 32px;
+    flex-wrap: wrap;
+  }
+
+  .stat {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 20px;
+    flex: 1;
+    min-width: 120px;
+  }
+
+  .stat-num {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--green);
+  }
+
+  .stat-label {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 2px;
+  }
+
+  /* Action bar */
+  .action-bar {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 32px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .action-bar h2 {
+    font-size: 20px;
+    font-weight: 800;
+    flex: 1;
+  }
+
+  /* Playlist grid */
+  .playlists-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+  }
+
+  .playlist-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+
+  .playlist-card:hover {
+    border-color: var(--green);
+    transform: translateY(-3px);
+  }
+
+  .playlist-header {
+    padding: 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .playlist-emoji {
+    font-size: 28px;
+    width: 48px;
+    height: 48px;
+    background: var(--black);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .playlist-name {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 3px;
+  }
+
+  .playlist-count {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+  }
+
+  .playlist-songs {
+    padding: 12px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .playlist-songs::-webkit-scrollbar { width: 4px; }
+  .playlist-songs::-webkit-scrollbar-track { background: transparent; }
+  .playlist-songs::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .song-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px;
+    border-radius: 6px;
+    transition: background 0.15s;
+    cursor: default;
+  }
+
+  .song-item:hover { background: var(--black); }
+
+  .song-num {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    width: 18px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  .song-info { flex: 1; min-width: 0; }
+
+  .song-title {
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .song-artist {
+    font-size: 11px;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-family: 'Space Mono', monospace;
+  }
+
+  .playlist-footer {
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .btn-sm {
+    padding: 8px 18px;
+    font-size: 13px;
+  }
+
+  /* Progress */
+  .progress-wrap {
+    background: var(--border);
+    border-radius: 100px;
+    height: 4px;
+    margin-top: 8px;
+    overflow: hidden;
+  }
+
+  .progress-bar {
+    height: 100%;
+    background: var(--green);
+    border-radius: 100px;
+    transition: width 0.3s;
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--card);
+    border: 1px solid var(--green);
+    border-radius: 10px;
+    padding: 14px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    z-index: 999;
+    transform: translateY(80px);
+    opacity: 0;
+    transition: all 0.3s;
+  }
+
+  .toast.show {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  .error { color: #ff5555; border-color: #ff5555; }
+
+  .tag {
+    display: inline-block;
+    background: rgba(29,185,84,0.15);
+    color: var(--green);
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-family: 'Space Mono', monospace;
+    margin-bottom: 8px;
+  }
+
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 32px 0;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="logo">♪</div>
+    <h1>Playlist <span>Sorter</span></h1>
+  </header>
+
+  <!-- Login Screen -->
+  <div id="loginScreen" class="screen active">
+    <div class="login-box">
+      <div style="font-size:48px;margin-bottom:20px">🎵</div>
+      <h2>Sort Your Liked Songs</h2>
+      <p>Connect your Spotify account and AI will automatically sort all your liked songs into genre-based playlists.</p>
+      <button class="btn" onclick="login()">
+        <span>🟢</span> Connect Spotify
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading Screen -->
+  <div id="loadingScreen" class="screen">
+    <div class="loading-box">
+      <div class="spinner"></div>
+      <h2 style="margin-bottom:8px" id="loadingTitle">Fetching your liked songs...</h2>
+      <p id="loadingMsg">This may take a moment</p>
+      <div class="progress-wrap" style="max-width:300px;margin:16px auto 0">
+        <div class="progress-bar" id="progressBar" style="width:0%"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results Screen -->
+  <div id="resultsScreen" class="screen">
+    <div class="stats-bar" id="statsBar"></div>
+    <div class="action-bar">
+      <h2>Your Sorted Playlists</h2>
+      <button class="btn btn-outline" onclick="resort()">↻ Re-sort</button>
+      <button class="btn" onclick="createAll()">✦ Create All Playlists</button>
+    </div>
+    <div class="playlists-grid" id="playlistsGrid"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const CLIENT_ID = 'f04a5b2d1cfb4bf6916545bec7993acd';
+const REDIRECT_URI = 'https://laniercolin-create.github.io/Playlist-sorter/';
+const SCOPES = 'user-library-read playlist-modify-public playlist-modify-private';
+
+let accessToken = null;
+let allSongs = [];
+let sortedPlaylists = {};
+let userId = null;
+
+// Check for token in URL hash (after Spotify redirect)
+function checkToken() {
+  const hash = window.location.hash.substring(1);
+  const params = new URLSearchParams(hash);
+  const token = params.get('access_token');
+  if (token) {
+    accessToken = token;
+    window.history.replaceState({}, document.title, window.location.pathname);
+    showScreen('loadingScreen');
+    fetchAllLikedSongs();
+  }
+}
+
+function login() {
+  const authUrl = `https://accounts.spotify.com/authorize?client_id=${CLIENT_ID}&response_type=token&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=${encodeURIComponent(SCOPES)}`;
+  window.location.href = authUrl;
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function setProgress(pct, title, msg) {
+  document.getElementById('progressBar').style.width = pct + '%';
+  if (title) document.getElementById('loadingTitle').textContent = title;
+  if (msg) document.getElementById('loadingMsg').textContent = msg;
+}
+
+async function fetchAllLikedSongs() {
+  try {
+    // Get user profile
+    const profileRes = await fetch('https://api.spotify.com/v1/me', {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    const profile = await profileRes.json();
+    userId = profile.id;
+
+    // Fetch liked songs (paginated)
+    let url = 'https://api.spotify.com/v1/me/tracks?limit=50';
+    let total = 0;
+    allSongs = [];
+
+    while (url) {
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+      const data = await res.json();
+      if (!total) total = data.total;
+      data.items.forEach(item => {
+        if (item.track) allSongs.push(item.track);
+      });
+      setProgress(
+        Math.round((allSongs.length / total) * 60),
+        `Fetching your liked songs...`,
+        `${allSongs.length} of ${total} songs loaded`
+      );
+      url = data.next;
+    }
+
+    setProgress(65, 'AI is sorting your songs...', 'Analyzing genres and vibes...');
+    await sortWithAI();
+  } catch (e) {
+    showToast('Error fetching songs. Please try again.', true);
+    showScreen('loginScreen');
+  }
+}
+
+async function sortWithAI() {
+  // Build a list of songs to send to AI
+  const songList = allSongs.slice(0, 200).map((t, i) =>
+    `${i+1}. "${t.name}" by ${t.artists.map(a => a.name).join(', ')}`
+  ).join('\n');
+
+  const prompt = `You are a music expert. Sort these Spotify liked songs into 6-10 genre/vibe playlists. 
+  
+Songs:
+${songList}
+
+Respond ONLY with a JSON object like this (no markdown, no explanation):
+{
+  "playlists": [
+    {
+      "name": "Playlist Name",
+      "emoji": "🎵",
+      "description": "Short vibe description",
+      "songIndices": [1, 3, 5]
+    }
+  ]
+}
+
+songIndices are the numbers from the list above (1-based). Be creative with playlist names that reflect the vibe. Every song should be in exactly one playlist.`;
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 4000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    const data = await response.json();
+    const text = data.content[0].text.trim();
+    const clean = text.replace(/```json|```/g, '').trim();
+    const result = JSON.parse(clean);
+
+    setProgress(95, 'Building your playlists...', 'Almost done!');
+
+    // Map song indices back to actual tracks
+    sortedPlaylists = {};
+    result.playlists.forEach(pl => {
+      sortedPlaylists[pl.name] = {
+        emoji: pl.emoji,
+        description: pl.description,
+        songs: pl.songIndices.map(i => allSongs[i - 1]).filter(Boolean)
+      };
+    });
+
+    // Handle any unassigned songs (put in "Everything Else")
+    const assignedIds = new Set();
+    result.playlists.forEach(pl => pl.songIndices.forEach(i => assignedIds.add(i - 1)));
+    const unassigned = allSongs.filter((_, i) => !assignedIds.has(i));
+    if (unassigned.length > 0) {
+      sortedPlaylists['Mixed Bag'] = { emoji: '🎲', description: 'Everything else', songs: unassigned };
+    }
+
+    setProgress(100, 'Done!', '');
+    setTimeout(() => renderResults(), 400);
+  } catch (e) {
+    // Fallback: simple genre sort if AI fails
+    fallbackSort();
+  }
+}
+
+function fallbackSort() {
+  // Basic keyword-based sorting as fallback
+  const genres = {
+    '🎸 Rock & Alt': { keywords: ['rock', 'alt', 'metal', 'punk', 'grunge'], songs: [] },
+    '🎤 Hip-Hop & Rap': { keywords: ['rap', 'hip', 'trap', 'drill'], songs: [] },
+    '🎹 R&B & Soul': { keywords: ['r&b', 'soul', 'rnb', 'rhythm'], songs: [] },
+    '🎉 Pop Hits': { keywords: ['pop', 'dance', 'edm', 'electro'], songs: [] },
+    '🌙 Chill Vibes': { keywords: ['chill', 'lo-fi', 'ambient', 'indie'], songs: [] },
+    '🎷 Everything Else': { keywords: [], songs: [] }
+  };
+
+  allSongs.forEach(track => {
+    const genres_list = (track.album?.genres || []).map(g => g.toLowerCase()).join(' ');
+    let placed = false;
+    for (const [name, data] of Object.entries(genres)) {
+      if (data.keywords.some(k => genres_list.includes(k))) {
+        data.songs.push(track);
+        placed = true;
+        break;
+      }
+    }
+    if (!placed) genres['🎷 Everything Else'].songs.push(track);
+  });
+
+  sortedPlaylists = {};
+  for (const [name, data] of Object.entries(genres)) {
+    if (data.songs.length > 0) {
+      const parts = name.split(' ');
+      sortedPlaylists[parts.slice(1).join(' ')] = {
+        emoji: parts[0],
+        description: '',
+        songs: data.songs
+      };
+    }
+  }
+  renderResults();
+}
+
+function renderResults() {
+  showScreen('resultsScreen');
+
+  // Stats
+  const totalPlaylists = Object.keys(sortedPlaylists).length;
+  document.getElementById('statsBar').innerHTML = `
+    <div class="stat"><div class="stat-num">${allSongs.length}</div><div class="stat-label">Liked Songs</div></div>
+    <div class="stat"><div class="stat-num">${totalPlaylists}</div><div class="stat-label">Playlists</div></div>
+    <div class="stat"><div class="stat-num">${Math.round(allSongs.length / totalPlaylists)}</div><div class="stat-label">Avg per playlist</div></div>
+  `;
+
+  // Playlist cards
+  const grid = document.getElementById('playlistsGrid');
+  grid.innerHTML = '';
+
+  for (const [name, data] of Object.entries(sortedPlaylists)) {
+    const card = document.createElement('div');
+    card.className = 'playlist-card';
+    card.innerHTML = `
+      <div class="playlist-header">
+        <div class="playlist-emoji">${data.emoji}</div>
+        <div>
+          <div class="playlist-name">${name}</div>
+          <div class="playlist-count">${data.songs.length} songs</div>
+          ${data.description ? `<div style="font-size:11px;color:var(--muted);margin-top:4px;font-family:'Space Mono',monospace">${data.description}</div>` : ''}
+        </div>
+      </div>
+      <div class="playlist-songs">
+        ${data.songs.slice(0, 30).map((s, i) => `
+          <div class="song-item">
+            <div class="song-num">${i + 1}</div>
+            <div class="song-info">
+              <div class="song-title">${s.name}</div>
+              <div class="song-artist">${s.artists.map(a => a.name).join(', ')}</div>
+            </div>
+          </div>
+        `).join('')}
+        ${data.songs.length > 30 ? `<div style="text-align:center;padding:8px;font-size:12px;color:var(--muted);font-family:'Space Mono',monospace">+${data.songs.length - 30} more</div>` : ''}
+      </div>
+      <div class="playlist-footer">
+        <button class="btn btn-sm" onclick="createPlaylist('${name}')">+ Add to Spotify</button>
+      </div>
+    `;
+    grid.appendChild(card);
+  }
+}
+
+async function createPlaylist(name) {
+  try {
+    const data = sortedPlaylists[name];
+    // Create playlist
+    const createRes = await fetch(`https://api.spotify.com/v1/users/${userId}/playlists`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ name: `${data.emoji} ${name}`, description: data.description, public: false })
+    });
+    const playlist = await createRes.json();
+
+    // Add tracks in batches of 100
+    const uris = data.songs.map(s => s.uri);
+    for (let i = 0; i < uris.length; i += 100) {
+      await fetch(`https://api.spotify.com/v1/playlists/${playlist.id}/tracks`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ uris: uris.slice(i, i + 100) })
+      });
+    }
+
+    showToast(`✓ "${name}" created on Spotify!`);
+  } catch (e) {
+    showToast('Failed to create playlist. Try again.', true);
+  }
+}
+
+async function createAll() {
+  showToast('Creating all playlists...');
+  for (const name of Object.keys(sortedPlaylists)) {
+    await createPlaylist(name);
+    await new Promise(r => setTimeout(r, 500));
+  }
+  showToast('✓ All playlists created on Spotify!');
+}
+
+function resort() {
+  showScreen('loadingScreen');
+  setProgress(0, 'Re-sorting your songs...', '');
+  sortWithAI();
+}
+
+function showToast(msg, isError = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  setTimeout(() => t.className = 'toast', 3500);
+}
+
+// Init
+checkToken();
+</script>
+</body>
+</html>
